@@ -1,13 +1,28 @@
-"""Boundary tests for all Sentinel attack modules — no crash on edge inputs."""
+"""Boundary tests for all Sentinel attack modules — no crash on edge inputs.
+
+These are offline unit tests: the HTTP session is replaced with a stub that
+always fails as if the host were unreachable. That keeps the suite fast and
+deterministic and stops it from making real network calls to the target
+addresses (which previously hung CI for hours against a black-hole IP).
+"""
 
 from sentinel.models import EngagementSession, HAS_REQUESTS
+
+
+class _OfflineSession:
+    """Drop-in for requests.Session that never touches the network."""
+
+    def request(self, *args, **kwargs):
+        raise ConnectionError("offline test session")
 
 
 def _es(**kw) -> EngagementSession:
     defaults = dict(base_url="http://192.0.2.1", headers={}, cookies={},
                     proxies={}, timeout=2, delay=0.0)
     defaults.update(kw)
-    return EngagementSession(**defaults)
+    es = EngagementSession(**defaults)
+    es.session = _OfflineSession()
+    return es
 
 
 # ── FingerprintModule ──────────────────────────────────────────────────────
