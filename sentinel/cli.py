@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import argparse
 import textwrap
-from typing import Dict
 
 from sentinel.config import COMMAND, DEFAULT_TIMEOUT, DEFAULT_UA, TOOL_NAME, VERSION
 from sentinel.logger import log
-from sentinel.models import AttackResult, EngagementSession, HAS_REQUESTS
+from sentinel.models import HAS_REQUESTS, AttackResult, EngagementSession
 from sentinel.modules import (
-    AuthModule, FingerprintModule, GraphQLModule,
-    IDORModule, InjectModule, SSRFModule,
+    AuthModule,
+    FingerprintModule,
+    GraphQLModule,
+    IDORModule,
+    InjectModule,
+    SSRFModule,
 )
 from sentinel.output import dump_results, print_banner, print_legal
 
@@ -72,13 +75,13 @@ def main() -> int:
         log("requests not installed. Run: pip install requests", "ERR")
         return 2
 
-    headers: Dict[str, str] = {"User-Agent": DEFAULT_UA}
+    headers: dict[str, str] = {"User-Agent": DEFAULT_UA}
     for h in args.header:
         if ":" in h:
             k, v = h.split(":", 1)
             headers[k.strip()] = v.strip()
 
-    cookies: Dict[str, str] = {}
+    cookies: dict[str, str] = {}
     for c in args.cookie:
         if "=" in c:
             k, v = c.split("=", 1)

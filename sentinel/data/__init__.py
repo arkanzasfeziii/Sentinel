@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 # ── SSRF cloud metadata probe targets ──────────────────────────────────────────
 
-SSRF_PROBES: Dict[str, List[Dict[str, Any]]] = {
+SSRF_PROBES: dict[str, list[dict[str, Any]]] = {
     "aws_imds_v1": [
         {"url": "http://169.254.169.254/latest/meta-data/iam/security-credentials/",
          "indicator": ["meta-data", "iam"], "critical": True},
@@ -51,7 +52,7 @@ SSRF_PROBES: Dict[str, List[Dict[str, Any]]] = {
     ],
 }
 
-SSRF_BYPASS_ENCODINGS: List[Callable[[str], str]] = [
+SSRF_BYPASS_ENCODINGS: list[Callable[[str], str]] = [
     lambda u: u,
     lambda u: u.replace("169.254.169.254", "169.254.169.254.xip.io"),
     lambda u: u.replace("169.254.169.254", "0251.0376.0251.0376"),
@@ -142,7 +143,7 @@ GRAPHQL_INTROSPECTION_BYPASS = [
 
 # ── WAF signatures ────────────────────────────────────────────────────────────
 
-WAF_SIGNATURES: Dict[str, List[str]] = {
+WAF_SIGNATURES: dict[str, list[str]] = {
     "Cloudflare":    ["cloudflare", "cf-ray", "__cfduid"],
     "AWS WAF":       ["x-amzn-requestid", "x-amzn-trace-id"],
     "Akamai":        ["akamai", "akamaierror"],

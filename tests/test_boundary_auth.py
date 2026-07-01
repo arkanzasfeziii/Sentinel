@@ -2,7 +2,7 @@
 
 import json
 
-from sentinel.modules.auth import _forge_jwt_none, _forge_jwt_hs256, _random_str
+from sentinel.modules.auth import _forge_jwt_hs256, _forge_jwt_none, _random_str
 from sentinel.utils.http import b64url_encode
 
 

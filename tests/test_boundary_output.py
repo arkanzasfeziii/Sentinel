@@ -9,7 +9,6 @@ from sentinel.logger import log
 from sentinel.models import AttackResult, EngagementSession
 from sentinel.output import dump_results
 
-
 # ── log ─────────────────────────────────────────────────────────────────────
 
 def test_log_empty():
@@ -122,5 +121,5 @@ def test_module_registry_complete():
 
 
 def test_module_registry_callable():
-    for name, (cls, _) in MODULE_REGISTRY.items():
+    for _name, (cls, _) in MODULE_REGISTRY.items():
         assert callable(cls)

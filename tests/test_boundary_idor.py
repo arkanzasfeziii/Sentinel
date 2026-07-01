@@ -2,7 +2,6 @@
 
 from sentinel.modules.idor import _idor_id_generator
 
-
 # ── _idor_id_generator ──────────────────────────────────────────────────────
 
 def test_idor_numeric_id():

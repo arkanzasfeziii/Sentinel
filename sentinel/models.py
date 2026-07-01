@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any
 
 try:
     import requests
@@ -40,7 +40,7 @@ class SSRFHit:
 @dataclass
 class Credential:
     type: str
-    value: Dict[str, str]
+    value: dict[str, str]
     source: str
     notes: str = ""
 
@@ -48,14 +48,14 @@ class Credential:
 @dataclass
 class EngagementSession:
     base_url: str
-    headers: Dict[str, str]
-    cookies: Dict[str, str]
-    proxies: Dict[str, str]
+    headers: dict[str, str]
+    cookies: dict[str, str]
+    proxies: dict[str, str]
     timeout: int
     delay: float
-    results: List[AttackResult] = field(default_factory=list)
-    credentials: List[Credential] = field(default_factory=list)
-    loot: Dict[str, Any] = field(default_factory=dict)
+    results: list[AttackResult] = field(default_factory=list)
+    credentials: list[Credential] = field(default_factory=list)
+    loot: dict[str, Any] = field(default_factory=dict)
     session: Any = None
 
     def __post_init__(self) -> None:

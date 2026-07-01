@@ -5,7 +5,6 @@ import json
 
 from sentinel.utils.http import b64url_decode, b64url_encode, jwt_parts
 
-
 # ── b64url_encode ───────────────────────────────────────────────────────────
 
 def test_encode_empty():
@@ -29,7 +28,7 @@ def test_encode_large():
 
 
 def test_encode_unicode_bytes():
-    result = b64url_encode("تست".encode("utf-8"))
+    result = b64url_encode("تست".encode())
     assert isinstance(result, str)
 
 

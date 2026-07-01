@@ -16,7 +16,8 @@ def test_b64url_no_padding():
 
 
 def test_jwt_parts_valid():
-    import base64, json
+    import base64
+    import json
     header = base64.urlsafe_b64encode(json.dumps({"alg": "HS256"}).encode()).rstrip(b"=").decode()
     payload = base64.urlsafe_b64encode(json.dumps({"sub": "1"}).encode()).rstrip(b"=").decode()
     token = f"{header}.{payload}.signature"

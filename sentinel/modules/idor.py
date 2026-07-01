@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid as _uuid
-from typing import Any, Dict, Iterator, List, Optional
+from collections.abc import Iterator
+from typing import Any
 
-from sentinel.models import AttackResult, EngagementSession
 from sentinel.logger import log
+from sentinel.models import AttackResult, EngagementSession
 from sentinel.modules.base import BaseModule
 from sentinel.utils.http import request
 
@@ -29,15 +30,15 @@ class IDORModule(BaseModule):
 
     name = "idor"
 
-    def run(self, es: EngagementSession, **kwargs: object) -> List[AttackResult]:
+    def run(self, es: EngagementSession, **kwargs: object) -> list[AttackResult]:
         target_url: str = kwargs.get("target_url", "")  # type: ignore[assignment]
         target_id: Any = kwargs.get("target_id")
         id_param: str = kwargs.get("id_param", "")  # type: ignore[assignment]
-        auth_headers_victim: Optional[Dict[str, str]] = kwargs.get("auth_headers_victim")  # type: ignore[assignment]
+        auth_headers_victim: dict[str, str] | None = kwargs.get("auth_headers_victim")  # type: ignore[assignment]
 
-        results: List[AttackResult] = []
+        results: list[AttackResult] = []
         scan_url = target_url or es.base_url
-        extracted_objects: List[Dict[str, Any]] = []
+        extracted_objects: list[dict[str, Any]] = []
 
         log(f"[IDOR] Enumerating around ID {target_id} at {scan_url}", "INFO")
 

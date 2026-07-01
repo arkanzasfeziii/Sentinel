@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sentinel import __version__, __author__
+from sentinel import __author__, __version__
 
 TOOL_NAME = "Sentinel Framework"
 VERSION = __version__

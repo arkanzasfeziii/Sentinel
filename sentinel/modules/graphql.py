@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
-
-from sentinel.models import AttackResult, EngagementSession
+from sentinel.data import GRAPHQL_INTROSPECTION, GRAPHQL_INTROSPECTION_BYPASS
 from sentinel.logger import log
+from sentinel.models import AttackResult, EngagementSession
 from sentinel.modules.base import BaseModule
 from sentinel.utils.http import request
-from sentinel.data import GRAPHQL_INTROSPECTION, GRAPHQL_INTROSPECTION_BYPASS
 
 
 class GraphQLModule(BaseModule):
@@ -16,10 +14,10 @@ class GraphQLModule(BaseModule):
 
     name = "graphql"
 
-    def run(self, es: EngagementSession, **kwargs: object) -> List[AttackResult]:
+    def run(self, es: EngagementSession, **kwargs: object) -> list[AttackResult]:
         graphql_url: str = kwargs.get("graphql_url", "")  # type: ignore[assignment]
 
-        results: List[AttackResult] = []
+        results: list[AttackResult] = []
         gql_url = graphql_url or (es.loot.get("fingerprint", {}).get("graphql_url") or
                                    es.base_url.rstrip("/") + "/graphql")
 
@@ -114,7 +112,7 @@ class GraphQLModule(BaseModule):
             try:
                 data = resp.json()
                 if isinstance(data, list) and len(data) > 1:
-                    log(f"[GraphQL] BATCHING enabled — rate limit bypass possible!", "CRIT")
+                    log("[GraphQL] BATCHING enabled — rate limit bypass possible!", "CRIT")
                     results.append(AttackResult(
                         "graphql", "batching_attack", "VULN",
                         url=gql_url,

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 from sentinel.config import AUTHOR, LEGAL_WARNING, TOOL_NAME, VERSION
 from sentinel.models import EngagementSession
@@ -35,7 +34,7 @@ def print_legal(yes: bool) -> bool:
         return False
 
 
-def dump_results(es: EngagementSession, output: Optional[str]) -> None:
+def dump_results(es: EngagementSession, output: str | None) -> None:
     vulns = sum(1 for r in es.results if r.status == "VULN")
     crits = sum(1 for r in es.results if r.severity == "CRITICAL")
     print(f"\n\033[35m{'═' * 60}\n  WEB ENGAGEMENT RESULTS\n{'═' * 60}\033[0m")

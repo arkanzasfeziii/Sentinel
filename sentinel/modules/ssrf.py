@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import json
 import urllib.parse
-from typing import Any, Dict, List, Optional
 
-from sentinel.models import AttackResult, Credential, EngagementSession, SSRFHit, HAS_REQUESTS
+from sentinel.data import SSRF_BYPASS_ENCODINGS, SSRF_PROBES
 from sentinel.logger import log
+from sentinel.models import HAS_REQUESTS, AttackResult, Credential, EngagementSession, SSRFHit
 from sentinel.modules.base import BaseModule
 from sentinel.utils.http import request
-from sentinel.data import SSRF_PROBES, SSRF_BYPASS_ENCODINGS
 
 
 class SSRFModule(BaseModule):
@@ -18,11 +17,11 @@ class SSRFModule(BaseModule):
 
     name = "ssrf"
 
-    def run(self, es: EngagementSession, **kwargs: object) -> List[AttackResult]:
-        param_names: Optional[List[str]] = kwargs.get("param_names")  # type: ignore[assignment]
+    def run(self, es: EngagementSession, **kwargs: object) -> list[AttackResult]:
+        param_names: list[str] | None = kwargs.get("param_names")  # type: ignore[assignment]
         target_url: str = kwargs.get("target_url", "")  # type: ignore[assignment]
 
-        results: List[AttackResult] = []
+        results: list[AttackResult] = []
         if not HAS_REQUESTS:
             return results
 
@@ -36,7 +35,7 @@ class SSRFModule(BaseModule):
             "data", "proxy", "forward", "api", "webhook", "notify",
         ]
 
-        hits: List[SSRFHit] = []
+        hits: list[SSRFHit] = []
 
         # Test each param with each cloud metadata probe
         for param in probe_params:
@@ -60,13 +59,7 @@ class SSRFModule(BaseModule):
 
                         # Check response for SSRF evidence
                         is_hit = False
-                        if indicators and any(ind.lower() in body.lower() for ind in indicators):
-                            is_hit = True
-                        elif "access_key" in body.lower() or "secretaccesskey" in body.lower():
-                            is_hit = True
-                        elif "access_token" in body.lower() and cloud_name in ("azure_imds", "gcp_metadata"):
-                            is_hit = True
-                        elif "root:x:0" in body and "file:///" in ssrf_url:
+                        if indicators and any(ind.lower() in body.lower() for ind in indicators) or "access_key" in body.lower() or "secretaccesskey" in body.lower() or "access_token" in body.lower() and cloud_name in ("azure_imds", "gcp_metadata") or "root:x:0" in body and "file:///" in ssrf_url:
                             is_hit = True
 
                         if is_hit:
@@ -96,7 +89,7 @@ class SSRFModule(BaseModule):
 
         # POST body SSRF testing
         for param in probe_params[:10]:
-            for cloud_name, probes in SSRF_PROBES.items():
+            for probes in SSRF_PROBES.values():
                 probe = probes[0]
                 ssrf_url = probe["url"]
                 for content_type, payload_fn in [
@@ -128,7 +121,7 @@ class SSRFModule(BaseModule):
         return results
 
     def _extract_aws_creds(self, es: EngagementSession, scan_url: str,
-                            param: str, role_list_body: str) -> List[Credential]:
+                            param: str, role_list_body: str) -> list[Credential]:
         creds = []
         role_name = role_list_body.strip().split("\n")[0].strip()
         if not role_name:

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
-from sentinel.models import AttackResult, EngagementSession
+from sentinel.data import COMMON_API_PATHS, WAF_SIGNATURES
 from sentinel.logger import log
+from sentinel.models import AttackResult, EngagementSession
 from sentinel.modules.base import BaseModule
 from sentinel.utils.http import request
-from sentinel.data import COMMON_API_PATHS, WAF_SIGNATURES
 
 
 class FingerprintModule(BaseModule):
@@ -16,8 +16,8 @@ class FingerprintModule(BaseModule):
 
     name = "fingerprint"
 
-    def run(self, es: EngagementSession, **kwargs: object) -> List[AttackResult]:
-        results: List[AttackResult] = []
+    def run(self, es: EngagementSession, **kwargs: object) -> list[AttackResult]:
+        results: list[AttackResult] = []
         log(f"[Fingerprint] Target: {es.base_url}", "INFO")
 
         # 1. Base response analysis
@@ -29,18 +29,28 @@ class FingerprintModule(BaseModule):
 
         server = resp.headers.get("Server", "")
         powered = resp.headers.get("X-Powered-By", "")
-        tech: List[str] = []
+        tech: list[str] = []
 
-        if server:      tech.append(f"Server: {server}")
-        if powered:     tech.append(f"X-Powered-By: {powered}")
-        if "laravel" in resp.text.lower(): tech.append("Laravel (PHP)")
-        if "django"  in resp.text.lower(): tech.append("Django (Python)")
-        if "rails"   in resp.text.lower(): tech.append("Ruby on Rails")
-        if "express" in resp.text.lower(): tech.append("Express.js (Node)")
-        if "spring"  in resp.text.lower(): tech.append("Spring (Java)")
-        if "wordpress" in resp.text.lower(): tech.append("WordPress")
-        if "wp-content" in resp.text: tech.append("WordPress")
-        if "struts"  in resp.text.lower(): tech.append("Apache Struts")
+        if server:
+            tech.append(f"Server: {server}")
+        if powered:
+            tech.append(f"X-Powered-By: {powered}")
+        if "laravel" in resp.text.lower():
+            tech.append("Laravel (PHP)")
+        if "django" in resp.text.lower():
+            tech.append("Django (Python)")
+        if "rails" in resp.text.lower():
+            tech.append("Ruby on Rails")
+        if "express" in resp.text.lower():
+            tech.append("Express.js (Node)")
+        if "spring" in resp.text.lower():
+            tech.append("Spring (Java)")
+        if "wordpress" in resp.text.lower():
+            tech.append("WordPress")
+        if "wp-content" in resp.text:
+            tech.append("WordPress")
+        if "struts" in resp.text.lower():
+            tech.append("Apache Struts")
 
         log(f"[Fingerprint] Tech stack: {', '.join(tech) or 'Unknown'}", "OK")
 
@@ -56,7 +66,7 @@ class FingerprintModule(BaseModule):
             waf_detected.append("WAF-blocked (403/406/429/503 on SQL probe)")
 
         # 3. API endpoint discovery
-        found_endpoints: List[Dict[str, Any]] = []
+        found_endpoints: list[dict[str, Any]] = []
         for path in COMMON_API_PATHS:
             url = es.base_url.rstrip("/") + path
             r = request(es, "GET", url)

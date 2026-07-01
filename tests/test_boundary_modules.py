@@ -6,7 +6,7 @@ deterministic and stops it from making real network calls to the target
 addresses (which previously hung CI for hours against a black-hole IP).
 """
 
-from sentinel.models import EngagementSession, HAS_REQUESTS
+from sentinel.models import EngagementSession
 
 
 class _OfflineSession:

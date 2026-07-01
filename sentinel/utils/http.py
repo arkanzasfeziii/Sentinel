@@ -5,12 +5,12 @@ from __future__ import annotations
 import base64
 import json
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from sentinel.models import EngagementSession, HAS_REQUESTS
+from sentinel.models import HAS_REQUESTS, EngagementSession
 
 
-def request(es: EngagementSession, method: str, url: str, **kwargs: Any) -> Optional[Any]:
+def request(es: EngagementSession, method: str, url: str, **kwargs: Any) -> Any | None:
     if not HAS_REQUESTS:
         return None
     try:
@@ -30,7 +30,7 @@ def b64url_decode(s: str) -> bytes:
     return base64.urlsafe_b64decode(s + "=" * pad)
 
 
-def jwt_parts(token: str) -> Optional[Tuple[Dict, Dict, str]]:
+def jwt_parts(token: str) -> tuple[dict, dict, str] | None:
     try:
         parts = token.split(".")
         if len(parts) != 3:
